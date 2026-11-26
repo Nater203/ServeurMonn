@@ -19,6 +19,12 @@ Autorise le port TCP choisi pour le collecteur dans le pare-feu Windows. Pour li
 Copie le certificat public dans le dossier du ZIP ou garde son chemin sous la main, puis depuis le dossier extrait lance :
 
 ```bash
+sudo apt update
+sudo apt install -y git unzip
+git clone https://github.com/Nater203/ServeurMonn.git
+cd ServeurMonn
+unzip serveurM.zip
+cd serveur
 bash install-debian.sh
 ```
 
