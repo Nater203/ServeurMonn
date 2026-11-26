@@ -210,6 +210,8 @@ Si tu changes le port ou le mot de passe Windows, relance aussi l’installateur
 
 L’identifiant ou le mot de passe Linux ne correspond pas à ceux configurés sous Windows. Vérifie aussi que tu as démarré le lanceur installé **start-monitor.cmd**, pas monitor-receiver.exe depuis le dossier extrait. Si le terminal Windows affiche « identifiants par défaut admin/root », le récepteur en cours utilise ces valeurs par défaut.
 
+Une ancienne version de install-debian.sh capturait aussi les retours à la ligne affichés pendant la saisie masquée et les ajoutait au mot de passe. Si tu as installé depuis une ancienne archive et que l’authentification échoue encore, télécharge le ZIP actualisé et relance l’installation Linux pour enregistrer à nouveau le mot de passe.
+
 ### Le collecteur ne peut pas joindre Windows
 
 Vérifie que l’adresse saisie sur Linux est l’IPv4 Windows, que le récepteur affiche « En attente des connexions sur le port 9050 », que le port est autorisé dans le pare-feu Windows et que les deux machines peuvent communiquer sur le réseau.
