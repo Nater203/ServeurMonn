@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Serveur Monitor — tableau de bord</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #0b1018;
+      --panel: #111a25;
+      --panel-raised: #152130;
+      --line: #243344;
+      --text: #edf4fb;
+      --muted: #96a8b9;
+      --mint: #66e2bf;
+      --blue: #78b7ff;
+      --violet: #b9a0ff;
+      --amber: #ffca72;
+      --red: #ff788b;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 16px;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 8% 0%, rgba(48, 112, 125, .19), transparent 34rem),
+        radial-gradient(ellipse at 95% 20%, rgba(84, 70, 140, .14), transparent 32rem),
+        var(--page);
+    }
+    .shell { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 48px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark {
+      display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid rgba(102, 226, 191, .35);
+      border-radius: 15px; color: var(--mint); background: rgba(102, 226, 191, .09);
+      box-shadow: 0 0 32px rgba(102, 226, 191, .09); font-size: 23px; font-weight: 800;
+    }
+    .eyebrow { margin: 0 0 3px; color: var(--mint); font-size: .78rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 1.8rem); letter-spacing: -.035em; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: .9rem; }
+    .status {
+      display: inline-flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: 999px; background: rgba(17, 26, 37, .8); color: var(--muted); white-space: nowrap;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 12px currentColor; }
+    .status.live { color: var(--mint); border-color: rgba(102, 226, 191, .27); }
+    .status.live .status-dot { background: var(--mint); }
+    .status.stale { color: var(--amber); border-color: rgba(255, 202, 114, .27); }
+    .status.offline { color: var(--red); border-color: rgba(255, 120, 139, .27); }
+    .status.offline .status-dot { background: var(--red); }
+    .refresh-button {
+      min-height: 40px; padding: 0 15px; border: 1px solid #344657; border-radius: 11px;
+      color: var(--text); background: #172330; font: inherit; font-size: .9rem; cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .refresh-button:hover { border-color: var(--mint); background: #1c2a38; }
+    .refresh-button:active { transform: translateY(1px); }
+    .refresh-button:focus-visible { outline: 3px solid rgba(102, 226, 191, .55); outline-offset: 3px; }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 0 17px; }
+    .intro h2 { margin: 0; font-size: 1.05rem; letter-spacing: -.01em; }
+    .intro p { margin: 0; color: var(--muted); font-size: .88rem; }
+    .host-name { color: var(--text); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 15px; }
+    .card {
+      min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 17px;
+      background: linear-gradient(145deg, rgba(21, 33, 48, .97), rgba(15, 23, 33, .97));
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .12);
+    }
+    .card-pad { padding: 19px; }
+    .metric-card { grid-column: span 3; min-height: 166px; }
+    .metric-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .metric-label, .section-title { margin: 0; color: var(--muted); font-size: .88rem; font-weight: 650; }
+    .metric-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: rgba(120, 183, 255, .1); color: var(--blue); font-size: .85rem; font-weight: 800; }
+    .metric-card:nth-child(2) .metric-icon { color: var(--mint); background: rgba(102, 226, 191, .1); }
+    .metric-card:nth-child(3) .metric-icon { color: var(--violet); background: rgba(185, 160, 255, .12); }
+    .metric-card:nth-child(4) .metric-icon { color: var(--amber); background: rgba(255, 202, 114, .1); }
+    .metric-value { margin: 0; font-size: clamp(1.65rem, 3vw, 2.15rem); font-variant-numeric: tabular-nums; font-weight: 760; letter-spacing: -.055em; line-height: 1.1; }
+    .metric-sub { margin: 8px 0 0; color: var(--muted); font-size: .84rem; }
+    .bar { width: 100%; height: 8px; overflow: hidden; margin-top: 16px; border-radius: 999px; background: #253443; }
+    .bar-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #55dcb5, #77b8ff); transition: width .35s ease; }
+    .bar-fill.warn { background: linear-gradient(90deg, #ffc76d, #ff8f72); }
+    .bar-fill.danger { background: linear-gradient(90deg, #ff9c75, #ff6d87); }
+    .detail-card { grid-column: span 6; }
+    .wide-card { grid-column: span 12; }
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .card-header h2 { margin: 0; font-size: 1rem; letter-spacing: -.015em; }
+    .card-header p { margin: 5px 0 0; color: var(--muted); font-size: .84rem; }
+    .unit-note { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+    .chart-wrap { position: relative; height: 145px; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; color: var(--muted); font-size: .82rem; }
+    .legend { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-mark { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+    .legend-mark.blue { background: var(--blue); }
+    .legend-mark.violet { background: var(--violet); }
+    .load-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .load-item { padding: 14px 13px; border: 1px solid var(--line); border-radius: 13px; background: rgba(8, 14, 21, .34); }
+    .load-item span { display: block; color: var(--muted); font-size: .8rem; }
+    .load-item strong { display: block; margin-top: 7px; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+    .task-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .task-row span { color: var(--muted); font-size: .88rem; }
+    .task-row strong { font-size: .98rem; font-variant-numeric: tabular-nums; }
+    .disk-list { display: grid; gap: 15px; }
+    .disk-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(160px, 2fr) auto; align-items: center; gap: 16px; }
+    .disk-mount { overflow: hidden; color: var(--text); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .disk-row .bar { margin: 0; height: 9px; }
+    .disk-size { color: var(--muted); font-size: .84rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .interface-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
+    .interface { padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; background: rgba(8, 14, 21, .34); }
+    .interface-name { margin: 0 0 11px; font-size: .9rem; font-weight: 700; }
+    .interface-flow { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .82rem; }
+    .interface-flow strong { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
+    .empty { padding: 22px 16px; border: 1px dashed #38495a; border-radius: 13px; color: var(--muted); font-size: .9rem; text-align: center; }
+    .footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 18px; color: #778b9d; font-size: .78rem; }
+    .placeholder { color: #8496a7; }
+    @media (max-width: 850px) {
+      .metric-card { grid-column: span 6; }
+      .detail-card { grid-column: span 12; }
+      .topbar { align-items: flex-start; }
+      .topbar-right { flex-wrap: wrap; justify-content: flex-end; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 24px, 500px); padding-top: 18px; }
+      .topbar { flex-direction: column; margin-bottom: 22px; }
+      .topbar-right { width: 100%; justify-content: space-between; gap: 8px; }
+      .intro { align-items: flex-start; flex-direction: column; gap: 7px; }
+      .metric-card { grid-column: span 12; min-height: 145px; }
+      .metric-card .card-pad { padding: 17px; }
+      .disk-row { grid-template-columns: minmax(75px, .8fr) minmax(80px, 1.2fr); gap: 9px 13px; }
+      .disk-size { grid-column: 1 / -1; text-align: left; }
+      .footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">◎</div>
+        <div>
+          <p class="eyebrow">Centre de contrôle</p>
+          <h1>Serveur Monitor</h1>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div id="connection-status" class="status" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span><span id="status-label">En attente des données</span>
+        </div>
+        <button id="refresh-button" class="refresh-button" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="intro" aria-label="Serveur surveillé">
+      <h2>Vue d’ensemble</h2>
+      <p>Serveur : <span id="hostname" class="host-name">En attente…</span></p>
+    </section>
+
+    <section class="grid" aria-label="Mesures du serveur">
+      <article class="card metric-card"><div class="card-pad">
+        <div class="metric-heading"><h2 class="metric-label">Processeur</h2><span class="metric-icon" aria-hidden="true">CPU</span></div>
+        <p id="cpu-value" class="metric-value placeholder">—</p>
+        <p id="cpu-sub" class="metric-sub">En attente de la première mesure</p>
+        <div class="bar" role="progressbar" aria-label="Utilisation du processeur" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="cpu-bar" class="bar-fill"></div></div>
+      </div></article>
+
+      <article class="card metric-card"><div class="card-pad">
+        <div class="metric-heading"><h2 class="metric-label">Mémoire vive</h2><span class="metric-icon" aria-hidden="true">RAM</span></div>
+        <p id="ram-value" class="metric-value placeholder">—</p>
+        <p id="ram-sub" class="metric-sub">En attente de la première mesure</p>
+        <div class="bar" role="progressbar" aria-label="Utilisation de la mémoire vive" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="ram-bar" class="bar-fill"></div></div>
+      </div></article>
+
+      <article class="card metric-card"><div class="card-pad">
+        <div class="metric-heading"><h2 class="metric-label">Réseau</h2><span class="metric-icon" aria-hidden="true">NET</span></div>
+        <p id="network-rx" class="metric-value placeholder">—</p>
+        <p id="network-sub" class="metric-sub">Réception / seconde</p>
+        <div class="bar" role="progressbar" aria-label="Activité réseau relative" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="network-bar" class="bar-fill"></div></div>
+      </div></article>
+
+      <article class="card metric-card"><div class="card-pad">
+        <div class="metric-heading"><h2 class="metric-label">Fonctionnement</h2><span class="metric-icon" aria-hidden="true">UP</span></div>
+        <p id="uptime-value" class="metric-value placeholder">—</p>
+        <p id="uptime-sub" class="metric-sub">Durée depuis le démarrage</p>
+        <div class="bar" role="progressbar" aria-label="État du récepteur" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="uptime-bar" class="bar-fill"></div></div>
+      </div></article>
+
+      <article class="card detail-card"><div class="card-pad">
+        <div class="card-header"><div><h2>Activité récente</h2><p>Mesures reçues depuis l’ouverture du tableau</p></div><span class="unit-note">60 derniers relevés</span></div>
+        <div class="chart-wrap"><canvas id="history-chart" role="img" aria-label="Graphique de l’activité CPU et réseau"></canvas></div>
+        <div class="chart-legend"><span class="legend"><i class="legend-mark"></i>CPU</span><span class="legend"><i class="legend-mark blue"></i>Réception</span><span class="legend"><i class="legend-mark violet"></i>Émission</span></div>
+      </div></article>
+
+      <article class="card detail-card"><div class="card-pad">
+        <div class="card-header"><div><h2>Charge de travail</h2><p>Moyenne système et tâches actives</p></div><span id="cpu-cores" class="unit-note">— cœurs</span></div>
+        <div class="load-grid">
+          <div class="load-item"><span>1 minute</span><strong id="load-1">—</strong></div>
+          <div class="load-item"><span>5 minutes</span><strong id="load-5">—</strong></div>
+          <div class="load-item"><span>15 minutes</span><strong id="load-15">—</strong></div>
+        </div>
+        <div class="task-row"><span>Tâches en cours</span><strong id="tasks-value">—</strong></div>
+        <div class="task-row"><span>Échange réseau</span><strong id="network-tx">TX —</strong></div>
+      </div></article>
+
+      <article class="card wide-card"><div class="card-pad">
+        <div class="card-header"><div><h2>Stockage</h2><p>Occupation des systèmes de fichiers reçus</p></div><span id="disk-count" class="unit-note">— volumes</span></div>
+        <div id="disk-list" class="disk-list"><div class="empty">Les informations de stockage apparaîtront à la réception des données.</div></div>
+      </div></article>
+
+      <article class="card wide-card"><div class="card-pad">
+        <div class="card-header"><div><h2>Interfaces réseau</h2><p>Débit par interface, hors interface locale</p></div><span id="sample-time" class="unit-note">Dernière mesure : —</span></div>
+        <div id="interface-list" class="interface-list"><div class="empty">En attente d’une mesure réseau.</div></div>
+      </div></article>
+    </section>
+
+    <footer class="footer"><span>Les mesures sont fournies par le récepteur local.</span><span id="memory-swap">Swap : —</span></footer>
+  </main>
+
+  <script>
+    (() => {
+      const history = [];
+      const $ = (id) => document.getElementById(id);
+      const number = (value, digits = 1) => value != null && Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '—';
+      const bytes = (value) => {
+        if (!Number.isFinite(Number(value)) || Number(value) < 0) return '—';
+        const units = ['o', 'Kio', 'Mio', 'Gio', 'Tio'];
+        let amount = Number(value), index = 0;
+        while (amount >= 1024 && index < units.length - 1) { amount /= 1024; index++; }
+        return `${amount.toFixed(index ? 1 : 0)} ${units[index]}`;
+      };
+      const rate = (value) => `${bytes(value)}/s`;
+      const percent = (value) => `${number(value)} %`;
+      const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
+      const updateBar = (id, amount) => {
+        const fill = $(id);
+        const value = clamp(amount);
+        fill.style.width = `${value}%`;
+        fill.classList.toggle('warn', value >= 75 && value < 90);
+        fill.classList.toggle('danger', value >= 90);
+        const progress = fill.parentElement;
+        progress.setAttribute('aria-valuenow', String(Math.round(value)));
+      };
+      const uptime = (seconds) => {
+        if (seconds == null || !Number.isFinite(Number(seconds))) return '—';
+        let rest = Math.max(0, Math.floor(Number(seconds)));
+        const days = Math.floor(rest / 86400); rest %= 86400;
+        const hours = Math.floor(rest / 3600); rest %= 3600;
+        const minutes = Math.floor(rest / 60);
+        if (days) return `${days} j ${hours} h`;
+        if (hours) return `${hours} h ${minutes} min`;
+        return `${minutes} min`;
+      };
+      const setStatus = (kind, label) => {
+        const status = $('connection-status');
+        status.className = `status ${kind}`;
+        $('status-label').textContent = label;
+      };
+      const addCell = (parent, className, content) => {
+        const element = document.createElement('div');
+        element.className = className;
+        element.textContent = content;
+        parent.appendChild(element);
+        return element;
+      };
+      const drawChart = () => {
+        const canvas = $('history-chart');
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(rect.width * ratio);
+        canvas.height = Math.round(rect.height * ratio);
+        const context = canvas.getContext('2d');
+        context.scale(ratio, ratio);
+        const width = rect.width, height = rect.height;
+        context.clearRect(0, 0, width, height);
+        context.strokeStyle = 'rgba(150, 168, 185, .15)';
+        context.lineWidth = 1;
+        for (let row = 1; row < 4; row++) {
+          const y = (height - 12) * row / 4 + 5;
+          context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
+        }
+        if (history.length < 2) {
+          context.fillStyle = '#96a8b9'; context.font = '14px system-ui';
+          context.fillText('Le graphique se dessine au fil des mesures.', 4, height / 2);
+          return;
+        }
+        const maxRate = Math.max(1, ...history.map((point) => Math.max(point.rx, point.tx)));
+        const series = [
+          { key: 'cpu', color: '#66e2bf', scale: 100 },
+          { key: 'rx', color: '#78b7ff', scale: maxRate },
+          { key: 'tx', color: '#b9a0ff', scale: maxRate }
+        ];
+        for (const line of series) {
+          context.beginPath();
+          context.strokeStyle = line.color;
+          context.lineWidth = 2;
+          context.lineJoin = 'round';
+          history.forEach((point, index) => {
+            const x = index * width / (history.length - 1);
+            const y = height - 7 - clamp(point[line.key] / line.scale * 100) * (height - 18) / 100;
+            if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+          });
+          context.stroke();
+        }
+      };
+      const renderDisks = (disks) => {
+        const list = $('disk-list');
+        list.replaceChildren();
+        if (!Array.isArray(disks) || disks.length === 0) {
+          list.innerHTML = '<div class="empty">Aucun volume de stockage n’a été signalé.</div>';
+          $('disk-count').textContent = '0 volume';
+          return;
+        }
+        $('disk-count').textContent = `${disks.length} ${disks.length === 1 ? 'volume' : 'volumes'}`;
+        for (const disk of disks) {
+          const row = document.createElement('div'); row.className = 'disk-row';
+          const mount = addCell(row, 'disk-mount', disk.mount || 'Volume');
+          mount.title = disk.mount || '';
+          const bar = document.createElement('div'); bar.className = 'bar'; bar.setAttribute('role', 'progressbar');
+          bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+          const fill = document.createElement('div'); fill.className = 'bar-fill';
+          const usedPercent = disk.used_percent != null && Number.isFinite(Number(disk.used_percent)) ? Number(disk.used_percent) : (disk.total_bytes ? Number(disk.used_bytes) / Number(disk.total_bytes) * 100 : 0);
+          const usage = clamp(usedPercent);
+          fill.style.width = `${usage}%`;
+          if (usage >= 90) fill.classList.add('danger'); else if (usage >= 75) fill.classList.add('warn');
+          bar.setAttribute('aria-valuenow', String(Math.round(usage))); bar.appendChild(fill); row.appendChild(bar);
+          const size = addCell(row, 'disk-size', `${bytes(disk.used_bytes)} / ${bytes(disk.total_bytes)} utilisés (${percent(usedPercent)}) · libre ${bytes(disk.available_bytes)}`);
+          size.title = `${bytes(disk.available_bytes)} disponibles`;
+          list.appendChild(row);
+        }
+      };
+      const renderInterfaces = (interfaces) => {
+        const list = $('interface-list'); list.replaceChildren();
+        const entries = Object.entries(interfaces || {});
+        if (!entries.length) { list.innerHTML = '<div class="empty">Aucune interface mesurable pour le moment.</div>'; return; }
+        for (const [name, value] of entries) {
+          const card = document.createElement('div'); card.className = 'interface';
+          addCell(card, 'interface-name', name);
+          const rx = document.createElement('div'); rx.className = 'interface-flow';
+          addCell(rx, 'span', 'Réception'); addCell(rx, 'strong', rate(value.received_bytes_per_sec)); card.appendChild(rx);
+          const tx = document.createElement('div'); tx.className = 'interface-flow';
+          addCell(tx, 'span', 'Émission'); addCell(tx, 'strong', rate(value.sent_bytes_per_sec)); card.appendChild(tx);
+          list.appendChild(card);
+        }
+      };
+      const render = (data) => {
+        if (!data || typeof data !== 'object') {
+          setStatus('offline', 'En attente des données');
+          return;
+        }
+        $('hostname').textContent = data.hostname || 'Serveur Linux';
+        const age = Math.max(0, Date.now() / 1000 - Number(data.timestamp_unix_seconds || 0));
+        if (age > 15) setStatus('stale', `Données anciennes · ${Math.floor(age)} s`);
+        else setStatus('live', 'Réception active');
+
+        const cpu = data.cpu_percent == null ? NaN : Number(data.cpu_percent);
+        $('cpu-value').textContent = Number.isFinite(cpu) ? percent(cpu) : 'n/a';
+        $('cpu-value').classList.toggle('placeholder', !Number.isFinite(cpu));
+        $('cpu-sub').textContent = `${data.cpu_logical_cores || '—'} cœurs logiques`;
+        updateBar('cpu-bar', cpu);
+
+        const ramTotal = Number(data.memory_total_bytes) || 0;
+        const ramUsed = Number(data.memory_used_bytes) || 0;
+        const ramPercent = ramTotal ? ramUsed / ramTotal * 100 : 0;
+        $('ram-value').textContent = ramTotal ? percent(ramPercent) : 'n/a';
+        $('ram-value').classList.toggle('placeholder', !ramTotal);
+        $('ram-sub').textContent = `${bytes(ramUsed)} utilisés · ${bytes(data.memory_available_bytes)} disponibles`;
+        updateBar('ram-bar', ramPercent);
+
+        const rx = Number(data.network_received_bytes_per_sec) || 0;
+        const tx = Number(data.network_sent_bytes_per_sec) || 0;
+        $('network-rx').textContent = rate(rx);
+        $('network-rx').classList.remove('placeholder');
+        $('network-sub').textContent = `Émission : ${rate(tx)}`;
+        updateBar('network-bar', Math.max(rx, tx) / (10 * 1024 * 1024) * 100);
+
+        const uptimeKnown = data.uptime_seconds != null && Number.isFinite(Number(data.uptime_seconds));
+        $('uptime-value').textContent = uptime(data.uptime_seconds);
+        $('uptime-value').classList.toggle('placeholder', !uptimeKnown);
+        $('uptime-sub').textContent = uptimeKnown ? `En ligne depuis ${uptime(data.uptime_seconds)}` : 'Durée indisponible';
+        updateBar('uptime-bar', age <= 15 ? clamp(100 - age / 15 * 100) : 0);
+        $('cpu-cores').textContent = `${data.cpu_logical_cores || '—'} cœurs`;
+
+        const load = Array.isArray(data.load_average_1_5_15_min) ? data.load_average_1_5_15_min : [];
+        $('load-1').textContent = load[0] == null ? '—' : number(load[0], 2);
+        $('load-5').textContent = load[1] == null ? '—' : number(load[1], 2);
+        $('load-15').textContent = load[2] == null ? '—' : number(load[2], 2);
+        $('tasks-value').textContent = data.tasks_running == null ? 'Indisponible' : `${data.tasks_running} actives / ${data.tasks_total ?? '—'} au total`;
+        $('network-tx').textContent = `TX ${rate(tx)}`;
+        const sampleDate = new Date(Number(data.timestamp_unix_seconds) * 1000);
+        $('sample-time').textContent = `Dernière mesure : ${Number.isNaN(sampleDate.getTime()) ? '—' : sampleDate.toLocaleTimeString()}`;
+        $('memory-swap').textContent = `Swap : ${bytes(data.swap_used_bytes)} / ${bytes(data.swap_total_bytes)} utilisés`;
+        renderDisks(data.disks);
+        renderInterfaces(data.network_interfaces);
+
+        history.push({ cpu: Number.isFinite(cpu) ? clamp(cpu) : 0, rx, tx });
+        if (history.length > 60) history.shift();
+        drawChart();
+      };
+      const refresh = async () => {
+        try {
+          const response = await fetch(`/api/metrics?ts=${Date.now()}`, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          render(await response.json());
+        } catch (_) {
+          setStatus('offline', 'Récepteur indisponible');
+        }
+      };
+      $('refresh-button').addEventListener('click', refresh);
+      window.addEventListener('resize', drawChart);
+      refresh();
+      window.setInterval(refresh, 1500);
+    })();
+  </script>
+</body>
+</html>

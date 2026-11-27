@@ -1,0 +1,33 @@
+[package]
+name = "serveur-monitor"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Surveillance et transmission sécurisée des ressources d'un serveur Linux"
+
+[[bin]]
+name = "serveur-monitor"
+path = "main.rs"
+
+[[bin]]
+name = "monitor-receiver"
+path = "windows_receiver.rs"
+
+[[bin]]
+name = "monitor-installer"
+path = "windows_installer.rs"
+required-features = ["windows-installer"]
+
+[features]
+windows-installer = ["dep:rpassword"]
+
+[dependencies]
+rcgen = "=0.13.2"
+rpassword = { version = "=7.5.4", optional = true }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pemfile = "2.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+# rcgen uses time transitively; keep it compatible with Debian 13's Rust 1.85.
+time = "=0.3.44"
